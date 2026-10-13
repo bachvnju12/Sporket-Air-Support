@@ -21,14 +21,14 @@ public static class DroneCombatRules
     public static (Vector3 Centre,Vector3 Half) HitBox(DroneKind kind,int index) => index==0?(Vector3.Zero,new(.085f,.085f,.32f)):
         kind==DroneKind.Scout ? index==1?(Vector3.Zero,new(.90f,.035f,.14f)):(new((index==2?-1:1)*.89f,-.062f,-.106f),new(.02f,.10f,.06f)):
         index<3?(new(0,0,index==1?-.17f:.145f),new(.38f,.035f,.065f)):(new((index==3?-1:1)*.045f,.10f,-.20f),new(.009f,.08f,.055f));
-    public static float HitDistance(DroneKind kind,Vector3 position,float heading,float pitch,float bank,Vector3 from,Vector3 to,Vector3? scale=null)
+    public static float HitDistance(DroneKind kind,Vector3 position,float heading,float pitch,float bank,Vector3 from,Vector3 to,Vector3? scale=null,bool deployed=true)
     {
         // A narrow body and wing volume follow the aircraft attitude; empty space around the wings is not a hit.
         var inverse=Quaternion.Inverse(Quaternion.CreateFromYawPitchRoll(heading*MathF.PI/180,-pitch*MathF.PI/180,bank*MathF.PI/180));
         var a=Vector3.Transform(from-position,inverse); var b=Vector3.Transform(to-position,inverse);
         if(scale is {} s) { a/=s; b/=s; }
         float best=float.PositiveInfinity;
-        for(int i=0;i<HitBoxCount(kind);i++)
+        for(int i=0;i<(deployed?HitBoxCount(kind):1);i++)
         {
             var (centre,half)=HitBox(kind,i); best=Math.Min(best,BoxHit(a-centre,b-centre,half));
         }

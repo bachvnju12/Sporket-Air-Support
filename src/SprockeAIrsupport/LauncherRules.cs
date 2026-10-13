@@ -3,7 +3,7 @@ namespace SprocketDrones;
 public static class LauncherRules
 {
     public const float UnlockTime=.18f,HatchOpenTime=.80f,LiftTime=1.80f,RaiseTime=2.45f,LidOpenTime=2.85f,ReleaseTime=3.35f,FlightTime=3.95f,CloseTime=4.35f,LowerTime=5f,StowTime=6f,HatchCloseTime=6.65f,RelockTime=6.85f;
-    public const float StowedHeight=-.405f,RaisedHeight=.28f;
+    public const float StowedHeight=-.405f,RaisedHeight=.20f,HatchOpenAngle=150;
     public static float PoseAge(float elapsed) => elapsed<0?-1:Math.Min(elapsed,RelockTime);
     public static bool PayloadVisible(float elapsed) => elapsed>=0 && elapsed<ReleaseTime && HatchAngle(elapsed)>.5f;
     // Zero velocity and acceleration at both ends avoids a jerk when mechanical stages start/stop.
@@ -14,7 +14,8 @@ public static class LauncherRules
         if(elapsed<0) return 0;
         return 60*(elapsed<RaiseTime?Smooth((elapsed-LiftTime)/(RaiseTime-LiftTime)):1-Smooth((elapsed-CloseTime)/(LowerTime-CloseTime)));
     }
-    public static float HatchAngle(float elapsed) => elapsed<0?0:90*(elapsed<HatchOpenTime?Smooth((elapsed-UnlockTime)/(HatchOpenTime-UnlockTime)):1-Smooth((elapsed-StowTime)/(HatchCloseTime-StowTime)));
+    public static float Elevation(DroneKind kind,float elapsed) => Elevation(elapsed)*(kind==DroneKind.Scout?.25f:1);
+    public static float HatchAngle(float elapsed) => elapsed<0?0:HatchOpenAngle*(elapsed<HatchOpenTime?Smooth((elapsed-UnlockTime)/(HatchOpenTime-UnlockTime)):1-Smooth((elapsed-StowTime)/(HatchCloseTime-StowTime)));
     public static float LiftHeight(float elapsed,float raisedHeight=RaisedHeight)
     {
         float raised=elapsed<0?0:elapsed<LiftTime?Smooth((elapsed-HatchOpenTime)/(LiftTime-HatchOpenTime)):1-Smooth((elapsed-LowerTime)/(StowTime-LowerTime));
@@ -35,6 +36,7 @@ public static class LauncherRules
     {
         float t=Math.Max(0,elapsed-ReleaseTime); return t<.10f?180*t*t:1.8f+36*(t-.10f);
     }
+    public static float SledDistance(float elapsed) => Math.Min(.36f,EjectionDistance(elapsed))*(1-Smooth((elapsed-CloseTime)/(LowerTime-CloseTime)));
     public static float WingDeployment(float elapsed,int stage=0) => Smooth((elapsed-ReleaseTime-.33f-stage*.025f)/.22f);
     public static float WingDeployment(DroneKind kind,float elapsed,int stage=0) => kind==DroneKind.Scout?Smooth((elapsed-LidOpenTime-stage*.04f)/.40f):WingDeployment(elapsed,stage);
     public static float PropellerSpeed(float elapsed) => 1600*Smooth((elapsed-ReleaseTime-.20f)/.40f);

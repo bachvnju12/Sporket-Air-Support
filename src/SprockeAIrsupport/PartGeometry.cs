@@ -181,6 +181,15 @@ public sealed class PartGeometry
             foreach(int side in new[]{-1,1}) foreach(float z in new[]{-.14f,-.12f,-.10f,-.08f,-.06f}) mesh.Box(new(side*.075f,.016f,z),new(.004f,.017f,.009f),2);
             mesh.Loft(new(0,0,-.306f),new[]{(-.025f,.017f,.018f),(-.019f,.026f,.027f),(.015f,.031f,.033f),(.025f,.026f,.029f)},2,segments:64);
             foreach(float z in new[]{.210f,.217f,.224f}) mesh.Tube(new(0,-.097f,z),.002f,.029f,.023f,4,segments:64);
+            foreach(int side in new[]{-1,1})
+            {
+                mesh.Rod(new(side*.048f,-.046f,.151f),new(side*.048f,-.085f,.151f),.005f,2,24);
+                mesh.Screw(new(side*.052f,-.085f,.151f),Quaternion.CreateFromAxisAngle(Vector3.UnitY,side*MathF.PI/2));
+                mesh.Plate(new(side*.064f,.045f,-.085f),new(.031f,.008f,.076f),1);
+                mesh.Rod(new(side*.067f,.040f,-.135f),new(side*.067f,.040f,-.030f),.001f,2,16);
+            }
+            mesh.Tube(new(-.025f,-.114f,.212f),.009f,.014f,.010f,2,segments:32);
+            mesh.Loft(new(-.025f,-.114f,.218f),new[]{(-.001f,.010f,.010f),(.001f,.010f,.010f)},3,segments:32);
         }
         else
         {
@@ -240,11 +249,12 @@ public sealed class PartGeometry
         var mesh=new PartGeometry(); mesh.Wing(Vector3.Zero,.30f,.11f,.055f,.01f,1,Quaternion.CreateFromAxisAngle(Vector3.UnitZ,MathF.PI/2),1); return mesh;
     }
     public static readonly Vector3 TubePivot=new(0,.257f,-.135f);
+    public static readonly Vector3 ScoutPivot=new(0,.10f,-.30f);
     public static Quaternion TubeRotation(float elevation) => Quaternion.CreateFromAxisAngle(Vector3.UnitX,-elevation*MathF.PI/180);
     public static Vector3 TubePoint(Vector3 local,float elevation=0) => TubePivot+Vector3.Transform(local+new Vector3(0,0,.24f),TubeRotation(elevation));
     // Kamikaze lid coordinates are relative to its moving trunnion frame.
-    public static Vector3 LidPivot(DroneKind kind) => kind==DroneKind.Scout?new(-.10f,.31f,.16f):new(-.103f,0,.668f);
-    public static Vector3 PayloadPosition(DroneKind kind,float elevation=0) => kind==DroneKind.Scout?new(0,.28f,.18f):TubePoint(new(0,0,.115f),elevation);
+    public static Vector3 LidPivot(DroneKind kind) => kind==DroneKind.Scout?new(-.10f,.205f,.48f):new(-.103f,0,.668f);
+    public static Vector3 PayloadPosition(DroneKind kind,float elevation=0) => kind==DroneKind.Scout?ScoutPivot+Vector3.Transform(new Vector3(0,.18f,.48f),TubeRotation(elevation)):TubePoint(new(0,0,.115f),elevation);
     // Explicit movable pieces share their closed pose with icons and native interaction/collision geometry.
     public static PartGeometry Lid(DroneKind kind)
     {
@@ -257,6 +267,11 @@ public sealed class PartGeometry
                 foreach(float side in new[]{-.075f,.075f}) mesh.Screw(new(.10f+side,.043f,z));
             }
             mesh.Rod(new(0,0,-.17f),new(0,0,.16f),.008f,4,24);
+            foreach(float z in new[]{-.17f,.16f})
+            {
+                mesh.Box(new(.10f,.026f,z),new(.14f,.008f,.024f),2);
+                mesh.Loft(new(0,0,z),new[]{(-.014f,.016f,.016f),(.014f,.016f,.016f)},4,Quaternion.CreateFromAxisAngle(Vector3.UnitY,MathF.PI/2),24);
+            }
         }
         else
         {
@@ -287,26 +302,31 @@ public sealed class PartGeometry
         var mesh=new PartGeometry();
         if(kind==DroneKind.Scout)
         {
-            mesh.Plate(new(0,.026f,-.075f),new(.52f,.052f,1.18f));
-            foreach(float x in new[]{-.205f,.205f})
+            // Open carrier frame leaves room for the catapult drive and does not mask the lift mechanism.
+            foreach(int side in new[]{-1,1})
             {
-                mesh.Box(new(x,.115f,-.07f),new(.036f,.15f,1.04f),0);
-                mesh.Box(new(x,.197f,-.07f),new(.043f,.018f,1.08f),4);
-                foreach(float z in new[]{-.46f,.32f}) mesh.Rod(new(x-.020f,.157f,z),new(x+.020f,.157f,z),.023f,2,32);
-                foreach(float z in new[]{-.56f,.41f}) { mesh.Plate(new(x,.07f,z),new(.082f,.022f,.10f),2); mesh.Screw(new(x,.085f,z)); }
+                mesh.Box(new(side*.245f,.026f,-.075f),new(.030f,.052f,1.18f));
+                mesh.Box(new(0,.026f,-.075f+side*.575f),new(.48f,.052f,.030f));
+                mesh.Box(new(side*.18f,.026f,-.075f),new(.040f,.014f,.56f),4);
+                foreach(float z in new[]{-.50f,-.08f,.36f}) mesh.Plate(new(side*.22f,.055f,z),new(.082f,.010f,.10f));
             }
-            foreach(float z in new[]{0f,.21f})
-            { mesh.Box(new(0,.12f,z),new(.37f,.046f,.055f),0); mesh.Box(new(0,.19f,z),new(.12f,.095f,.08f),2); }
-            foreach(float z in new[]{-.01f,.32f})
+            foreach(float z in new[]{-.30f,.12f}) mesh.Box(new(0,.026f,z),new(.46f,.045f,.048f));
+            mesh.Plate(new(-.19f,.055f,.32f),new(.10f,.010f,.18f));
+            mesh.Plate(new(.18f,.055f,.25f),new(.11f,.010f,.24f));
+            foreach(int side in new[]{-1,1})
             {
-                mesh.Plate(new(-.10f,.06f,z),new(.07f,.016f,.07f),2);
-                mesh.Box(new(-.10f,.185f,z),new(.025f,.25f,.034f),0);
-                mesh.Rod(new(-.116f,.31f,z),new(-.084f,.31f,z),.019f,4,32);
+                mesh.Plate(new(side*.14f,.056f,-.30f),new(.09f,.014f,.14f),2);
+                mesh.Box(new(side*.14f,.081f,-.30f),new(.034f,.054f,.10f));
+                mesh.Rod(new(side*.105f,.10f,-.30f),new(side*.175f,.10f,-.30f),.022f,4,32);
+                foreach(float z in new[]{-.35f,-.25f}) mesh.Screw(new(side*.14f,.113f,z));
+                mesh.Rod(new(side*.11f,.06f,.03f),new(side*.11f,.077f,.09f),.013f,2,24);
             }
-            mesh.Box(new(.10f,.081f,.325f),new(.16f,.054f,.12f),2);
             foreach(float x in new[]{-.22f,.22f}) foreach(float z in new[]{-.62f,.46f}) mesh.Screw(new(x,.054f,z));
-            mesh.Rod(new(-.23f,.082f,-.40f),new(-.23f,.082f,.35f),.007f,2,20);
-            mesh.Rod(new(-.10f,.31f,-.01f),new(-.10f,.31f,.32f),.012f,4,24);
+            // Compact actuator and return spool sit below the rail, clear of the belly camera.
+            mesh.Loft(new(.18f,.09f,.25f),new[]{(-.085f,.04f,.04f),(.085f,.04f,.04f)},2,segments:32);
+            foreach(float z in new[]{.17f,.33f}) mesh.Tube(new(.18f,.09f,z),.014f,.045f,.036f,4,segments:24);
+            mesh.Box(new(-.19f,.075f,.32f),new(.074f,.042f,.14f),2);
+            mesh.Rod(new(-.19f,.07f,.23f),new(-.14f,.065f,.10f),.004f,2,16);
         }
         else
         {
@@ -379,6 +399,59 @@ public sealed class PartGeometry
             mesh.Box(new(side*(kind==DroneKind.Scout?.18f:.16f)+.008f,-.411f,kind==DroneKind.Scout?-.075f:-.045f),new(.044f,.014f,.56f),4);
             foreach(int end in new[]{-1,1}) { var (anchor,_)=HatchStrut(kind,side,end,0);mesh.Box(anchor+new Vector3(side*.004f,-.01f,0),new(.022f,.030f,.060f),4); }
         }
+        float anchorZ=LiftDriveAnchor(kind).Z;
+        mesh.Plate(new(0,-.411f,anchorZ),new(.075f,.010f,.04f));
+        foreach(int side in new[]{-1,1}) mesh.Box(new(side*.027f,-.398f,anchorZ),new(.010f,.024f,.038f),4);
+        mesh.Rod(new(-.039f,-.398f,anchorZ),new(.039f,-.398f,anchorZ),.007f,4,24);
+        return mesh;
+    }
+    public static PartGeometry ScoutRail()
+    {
+        var mesh=new PartGeometry();
+        // Twin narrow guides, a linked sled and a clear camera channel; +Z is the launch axis.
+        foreach(int side in new[]{-1,1})
+        {
+            float x=side*.11f;
+            mesh.Box(new(x,.040f,.45f),new(.023f,.055f,.96f));
+            mesh.Box(new(x,.071f,.45f),new(.028f,.009f,.96f),4);
+            mesh.Box(new(x,.021f,.45f),new(.032f,.008f,.96f),4);
+            foreach(float z in new[]{.09f,.86f})
+            {
+                mesh.Plate(new(x,.073f,z),new(.05f,.010f,.058f),2);
+                mesh.Screw(new(x,.082f,z));
+            }
+        }
+        mesh.Box(new(0,.105f,.14f),new(.048f,.019f,.057f),2);
+        mesh.Tube(new(0,.09f,.135f),.035f,.014f,.006f,4,segments:24);
+        mesh.Rod(new(-.11f,.04f,.45f),new(-.10f,.19f,.31f),.010f,4,24);
+        mesh.Rod(new(-.11f,.04f,.56f),new(-.10f,.19f,.64f),.010f,4,24);
+        foreach(float z in new[]{.31f,.64f}) mesh.Rod(new(-.117f,.205f,z),new(-.083f,.205f,z),.015f,4,24);
+        mesh.Box(new(0,.040f,.925f),new(.24f,.034f,.028f),2);
+        mesh.Rod(new(.14f,.042f,.06f),new(.14f,.042f,.87f),.003f,2,16);
+        return mesh;
+    }
+    public static PartGeometry ScoutSled()
+    {
+        var mesh=new PartGeometry();
+        foreach(float z in new[]{.29f,.50f})
+        {
+            mesh.Box(new(0,.092f,z),new(.24f,.018f,.045f));
+            // Rubber V saddles carry the fuselage, rather than the camera or propeller.
+            foreach(int side in new[]{-1,1})
+            {
+                var q=Quaternion.CreateFromAxisAngle(Vector3.UnitZ,side*25*MathF.PI/180);
+                mesh.Box(new(side*.060f,.112f,z),new(.062f,.024f,.055f),0,q);
+                mesh.Box(new(side*.053f,.125f,z),new(.058f,.010f,.048f),2,q);
+                mesh.Screw(new(side*.075f,.135f,z));
+            }
+            foreach(int side in new[]{-1,1})
+            {
+                float x=side*.11f;
+                mesh.Box(new(x,.093f,z),new(.048f,.030f,.065f),2);
+                mesh.Rod(new(x-.025f,.088f,z),new(x+.025f,.088f,z),.013f,4,24);
+            }
+        }
+        mesh.Rod(new(0,.09f,.14f),new(0,.09f,.29f),.004f,4,16);
         return mesh;
     }
     public static PartGeometry Hatch(DroneKind kind,int side=-1)
@@ -411,8 +484,28 @@ public sealed class PartGeometry
     }
     public static PartGeometry LiftArm()
     {
-        var mesh=new PartGeometry();mesh.Box(new(0,0,.26f),new(.014f,.014f,.52f),4);
-        foreach(float z in new[]{0f,.26f,.52f}) mesh.Rod(new(-.010f,0,z),new(.010f,0,z),.011f,2,12);
+        var mesh=new PartGeometry();
+        foreach(int side in new[]{-1,1}) mesh.Box(new(side*.007f,0,.26f),new(.005f,.023f,.50f),4);
+        mesh.Box(new(0,-.009f,.26f),new(.014f,.006f,.45f),4);
+        var axis=Quaternion.CreateFromAxisAngle(Vector3.UnitY,MathF.PI/2);
+        foreach(float z in new[]{0f,.26f,.52f})
+        {
+            mesh.Tube(new(0,0,z),.022f,.018f,.007f,4,axis,32);
+            mesh.Rod(new(-.019f,0,z),new(.019f,0,z),.006f,4,24);
+            foreach(int side in new[]{-1,1})
+            {
+                mesh.Tube(new(side*.013f,0,z),.004f,.019f,.007f,2,axis,24);
+                mesh.Loft(new(side*.019f,0,z),new[]{(-.003f,.010f,.010f),(.003f,.010f,.010f)},4,axis,6);
+            }
+        }
+        return mesh;
+    }
+    public static Vector3 LiftDriveAnchor(DroneKind kind) => new(0,-.398f,kind==DroneKind.Scout?-.57f:-.458f);
+    public static PartGeometry LiftCrossPin(DroneKind kind)
+    {
+        var mesh=new PartGeometry();float width=kind==DroneKind.Scout?.20f:.18f;
+        mesh.Rod(new(-width,0,0),new(width,0,0),.008f,4,32);
+        mesh.Tube(Vector3.Zero,.024f,.015f,.008f,2,Quaternion.CreateFromAxisAngle(Vector3.UnitY,MathF.PI/2),32);
         return mesh;
     }
     public static (Vector3 A,Vector3 B) HatchStrut(DroneKind kind,int side,int end,float angle)
@@ -423,8 +516,8 @@ public sealed class PartGeometry
     }
     public static PartGeometry StrutBarrel()
     {
-        var mesh=new PartGeometry();mesh.Loft(Vector3.Zero,new[]{(0f,.014f,.014f),(.13f,.014f,.014f)},2,segments:24);
-        mesh.Tube(new(0,0,.121f),.013f,.018f,.0135f,4,segments:16);return mesh;
+        var mesh=new PartGeometry();mesh.Loft(Vector3.Zero,new[]{(0f,.014f,.014f),(.13f,.014f,.014f)},2,segments:48);
+        mesh.Tube(new(0,0,.121f),.013f,.018f,.0135f,4,segments:32);return mesh;
     }
     public static PartGeometry StrutRod()
     {
@@ -439,6 +532,11 @@ public sealed class PartGeometry
     {
         var mesh=new PartGeometry();
         for(int i=0;i<8;i++) { var (a,b)=LiftLink(kind,i,lift);mesh.Add(LiftArm(),a,LinkRotation(b-a)); }
+        var drive=LiftLink(kind,0,lift).A;drive.X=0;
+        var anchor=LiftDriveAnchor(kind);var driveDirection=Vector3.Normalize(drive-anchor);
+        mesh.Add(StrutBarrel(),anchor,LinkRotation(driveDirection));
+        mesh.Rod(anchor+driveDirection*.10f,drive,.006f,4,12);
+        mesh.Add(LiftCrossPin(kind),drive);
         foreach(int side in new[]{-1,1}) foreach(int end in new[]{-1,1})
         {
             var (a,b)=HatchStrut(kind,side,end,hatchAngle);var direction=Vector3.Normalize(b-a);
@@ -451,7 +549,7 @@ public sealed class PartGeometry
         // Closed compartment envelope: internal bolts/airframe are visual detail, not collision surfaces.
         var mesh=new PartGeometry();mesh.Box(HousingCentre(kind),HousingSize(kind)+new Vector3(.03f,.06f,.03f));return mesh;
     }
-    public static PartGeometry Create(DroneKind kind,float lidAngle=0,bool loaded=true,float elevation=0,float hatchAngle=0,float lift=LauncherRules.StowedHeight,float latchAngle=0)
+    public static PartGeometry Create(DroneKind kind,float lidAngle=0,bool loaded=true,float elevation=0,float hatchAngle=0,float lift=LauncherRules.StowedHeight,float latchAngle=0,float sledDistance=0)
     {
         var mesh=Housing(kind); var raised=new Vector3(0,lift,0);
         foreach(int side in new[]{-1,1})
@@ -462,11 +560,13 @@ public sealed class PartGeometry
         }
         mesh.Add(Mechanism(kind,hatchAngle,lift),Vector3.Zero);
         mesh.Add(Base(kind),raised);
-        if(kind==DroneKind.Kamikaze) mesh.Add(TubeAssembly(),TubePivot+raised,TubeRotation(elevation));
-        var lidRotation=kind==DroneKind.Scout?Quaternion.CreateFromAxisAngle(Vector3.UnitZ,lidAngle*MathF.PI/180):TubeRotation(elevation)*Quaternion.CreateFromAxisAngle(Vector3.UnitY,-lidAngle*MathF.PI/180);
-        var lidPosition=kind==DroneKind.Scout?LidPivot(kind):TubePivot+Vector3.Transform(LidPivot(kind),TubeRotation(elevation));
+        var frame=kind==DroneKind.Scout?ScoutPivot:TubePivot;
+        mesh.Add(kind==DroneKind.Scout?ScoutRail():TubeAssembly(),frame+raised,TubeRotation(elevation));
+        if(kind==DroneKind.Scout) mesh.Add(ScoutSled(),frame+raised+Vector3.Transform(new Vector3(0,0,sledDistance),TubeRotation(elevation)),TubeRotation(elevation));
+        var lidRotation=TubeRotation(elevation)*(kind==DroneKind.Scout?Quaternion.CreateFromAxisAngle(Vector3.UnitZ,lidAngle*MathF.PI/180):Quaternion.CreateFromAxisAngle(Vector3.UnitY,-lidAngle*MathF.PI/180));
+        var lidPosition=frame+Vector3.Transform(LidPivot(kind),TubeRotation(elevation));
         mesh.Add(Lid(kind),lidPosition+raised,lidRotation);
-        if(loaded) mesh.Add(Aircraft(kind,deployment:0),PayloadPosition(kind,elevation)+raised,kind==DroneKind.Scout?Quaternion.Identity:TubeRotation(elevation));
+        if(loaded) mesh.Add(Aircraft(kind,deployment:0),PayloadPosition(kind,elevation)+raised,TubeRotation(elevation));
         return mesh;
     }
 }

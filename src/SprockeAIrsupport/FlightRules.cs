@@ -35,6 +35,12 @@ public sealed class FlightState
         Armed=!Armed; return true;
     }
     public void Disarm() => Armed=false;
+    public void ResumeManual(bool armed)
+    {
+        if(Mode==FlightMode.Return) return;
+        Mode=FlightMode.Manual; Armed=Kind==DroneKind.Kamikaze && armed && Battery>=60;
+        ResetAim();
+    }
     public bool CanDetonate(bool healthy,bool collision) => Kind==DroneKind.Kamikaze && Armed && healthy && collision && Battery>0;
     public Vector3 Forward => new(MathF.Sin(Heading * MathF.PI / 180) * MathF.Cos(Pitch * MathF.PI / 180),
         MathF.Sin(Pitch * MathF.PI / 180), MathF.Cos(Heading * MathF.PI / 180) * MathF.Cos(Pitch * MathF.PI / 180));

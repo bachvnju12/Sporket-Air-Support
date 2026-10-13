@@ -12,9 +12,11 @@ internal static class DroneParts
 {
     private sealed record PartVisual(VehicleObjectModel Source,IntPtr ModelId,Mesh Mesh,Mesh Collision,GameObject Root,Transform Tray,Transform Pivot,Transform Lid,DroneKind Kind)
     {
-        internal float Started=-1,ReloadAt;
+        internal float Started=-1;
         internal float LastPose=-2;
         internal Transform[] Links=Array.Empty<Transform>(),Barrels=Array.Empty<Transform>(),Rods=Array.Empty<Transform>(),Latches=Array.Empty<Transform>(),Doors=Array.Empty<Transform>();
+        internal Renderer[] Renderers=Array.Empty<Renderer>();
+        internal Transform? Sled,DriveBarrel,DriveRod,DriveJoint;
     }
     private static readonly Dictionary<IntPtr,PartVisual> meshes=new();
     private static readonly VehicleMaterial?[] surfaces=new VehicleMaterial[5];
@@ -76,6 +78,9 @@ internal static class DroneParts
             visual.Doors=new Transform[2];
             for(int i=0;i<2;i++) { int side=i==0?-1:1;visual.Doors[i]=DroneModels.Model(root.transform,kind+" compartment door "+side,()=>PartGeometry.Hatch(kind.Value,side),DroneRuntime.ToU(PartGeometry.HatchPivot(kind.Value,side))).transform; }
             visual.Links=Enumerable.Range(0,8).Select(i=>DroneModels.Model(root.transform,"Lift linkage "+i,PartGeometry.LiftArm,Vector3.zero,"Lift arm").transform).ToArray();
+            visual.DriveBarrel=DroneModels.Model(root.transform,"Lift actuator barrel",PartGeometry.StrutBarrel,DroneRuntime.ToU(PartGeometry.LiftDriveAnchor(kind.Value)),"Gas spring barrel").transform;
+            visual.DriveRod=DroneModels.Model(root.transform,"Lift actuator piston",PartGeometry.StrutRod,DroneRuntime.ToU(PartGeometry.LiftDriveAnchor(kind.Value))+Vector3.forward*.10f,"Gas spring rod").transform;
+            visual.DriveJoint=DroneModels.Model(root.transform,"Lift cross shaft",()=>PartGeometry.LiftCrossPin(kind.Value),Vector3.zero).transform;
             visual.Barrels=new Transform[4];visual.Rods=new Transform[4];visual.Latches=new Transform[4];
             for(int i=0;i<4;i++)
             {
@@ -85,14 +90,17 @@ internal static class DroneParts
             }
             var tray=new GameObject("Launcher lift").transform;tray.SetParent(root.transform,false);
             DroneModels.Model(tray,kind+" launcher platform",()=>PartGeometry.Base(kind.Value),Vector3.zero);
-            var pivot=tray;
-            if(kind==DroneKind.Kamikaze)
+            var pivot=new GameObject(kind==DroneKind.Scout?"Scout rail trunnion":"Tube trunnion").transform;
+            pivot.SetParent(tray,false);pivot.localPosition=DroneRuntime.ToU(kind==DroneKind.Scout?PartGeometry.ScoutPivot:PartGeometry.TubePivot);
+            if(kind==DroneKind.Scout)
             {
-                pivot=new GameObject("Tube trunnion").transform; pivot.SetParent(tray,false); pivot.localPosition=DroneRuntime.ToU(PartGeometry.TubePivot);
-                DroneModels.Model(pivot,"Launch canister",PartGeometry.TubeAssembly,Vector3.zero);
+                DroneModels.Model(pivot,"Scout catapult rail",PartGeometry.ScoutRail,Vector3.zero);
+                visual.Sled=DroneModels.Model(pivot,"Scout launch sled",PartGeometry.ScoutSled,Vector3.zero).transform;
             }
+            else DroneModels.Model(pivot,"Launch canister",PartGeometry.TubeAssembly,Vector3.zero);
             var lid=DroneModels.Model(pivot,kind+" launcher lid",()=>PartGeometry.Lid(kind.Value),DroneRuntime.ToU(PartGeometry.LidPivot(kind.Value)));
             visual=visual with {Tray=tray,Pivot=pivot,Lid=lid.transform}; meshes[__instance.Pointer]=visual;
+            visual.Renderers=root.GetComponentsInChildren<Renderer>(true).ToArray();
             foreach(var child in root.GetComponentsInChildren<Transform>(true)) child.gameObject.layer=__instance.Model.Layer;
             SetPose(visual,pose);
             SyncMount(visual);
@@ -105,17 +113,48 @@ internal static class DroneParts
             var paint=native.Materials!=null && native.Materials.Length>0?native.Materials[0]:native.Material;
             for(int i=0;i<5;i++) surfaces[i]??=new VehicleMaterial(DroneModels.Surface(i)){Flags=VehicleMaterialFlags.Unpainted|VehicleMaterialFlags.DisableGrime|VehicleMaterialFlags.CustomShader};
             native.SetMaterials(new Il2CppReferenceArray<VehicleMaterial>(new[]{paint??surfaces[0]!,surfaces[1]!,surfaces[2]!,surfaces[3]!,surfaces[4]!}));
+            SyncPaint(visual);
         }
         catch(Exception ex) { ReleaseMesh(__instance.Pointer); Plugin.Instance.Log.LogError("[Drones] Part model load failed: "+ex); }
     }
     [HarmonyPostfix,HarmonyPatch(typeof(VehicleObjectModel),nameof(VehicleObjectModel.Release))]
     private static void Released(VehicleObjectModel __instance) => ReleaseMesh(__instance.Pointer);
+    [HarmonyPostfix,HarmonyPatch(typeof(VehicleRendererGroup),nameof(VehicleRendererGroup.SetMaterial))]
+    private static void PaintedSingle(VehicleRendererGroup __instance) => Painted(__instance);
+    [HarmonyPostfix,HarmonyPatch(typeof(VehicleRendererGroup),nameof(VehicleRendererGroup.SetMaterials))]
+    private static void Painted(VehicleRendererGroup __instance)
+    {
+        foreach(var item in meshes.Values) if(item.ModelId==__instance.Pointer && item.Root!=null)
+            try {SyncPaint(item);} catch(Exception ex) {Plugin.Instance.Log.LogWarning("[Drones] Launcher paint sync: "+ex.Message);}
+    }
+    private static void SyncPaint(PartVisual item)
+    {
+        var native=item.Source.Model;if(native==null) return;
+        var paint=native.Materials!=null && native.Materials.Length>0?native.Materials[0]:native.Material;
+        if(paint!=null) ApplyPaint(item.Renderers,paint);
+    }
+    internal static void ApplyPaint(Renderer[] renderers,VehicleMaterial paint)
+    {
+        for(int i=1;i<5;i++) surfaces[i]??=new VehicleMaterial(DroneModels.Surface(i)){Flags=VehicleMaterialFlags.Unpainted|VehicleMaterialFlags.DisableGrime|VehicleMaterialFlags.CustomShader};
+        var materials=new Il2CppReferenceArray<VehicleMaterial>(new[]{paint,surfaces[1]!,surfaces[2]!,surfaces[3]!,surfaces[4]!});
+        foreach(var renderer in renderers) if(renderer!=null) VehicleMaterial.ApplyToRenderer(renderer,materials);
+    }
     private static void SetPose(PartVisual item,float elapsed)
     {
         float angle=LauncherRules.LidAngle(elapsed),hatch=LauncherRules.HatchAngle(elapsed),height=LauncherRules.LiftHeight(elapsed,Plugin.LauncherHeight.Value);
         for(int i=0;i<item.Doors.Length;i++) item.Doors[i].localRotation=Quaternion.Euler(0,0,(i==0?1:-1)*hatch);
         item.Tray.localPosition=new(0,height,0);
-        if(item.Kind==DroneKind.Kamikaze) item.Pivot.localRotation=Quaternion.Euler(-LauncherRules.Elevation(elapsed),0,0);
+        item.Pivot.localRotation=Quaternion.Euler(-LauncherRules.Elevation(item.Kind,elapsed),0,0);
+        if(item.Sled!=null) item.Sled.localPosition=new(0,0,LauncherRules.SledDistance(elapsed));
+        var drive=PartGeometry.LiftLink(item.Kind,0,height).A;drive.X=0;
+        if(item.DriveJoint!=null) item.DriveJoint.localPosition=DroneRuntime.ToU(drive);
+        var anchor=PartGeometry.LiftDriveAnchor(item.Kind);var driveDirection=DroneRuntime.ToU(drive-anchor);var driveRotation=Quaternion.LookRotation(driveDirection);
+        if(item.DriveBarrel!=null) item.DriveBarrel.localRotation=driveRotation;
+        if(item.DriveRod!=null)
+        {
+            item.DriveRod.localPosition=DroneRuntime.ToU(anchor)+driveDirection.normalized*.10f;
+            item.DriveRod.localRotation=driveRotation;item.DriveRod.localScale=new(1,1,driveDirection.magnitude-.10f);
+        }
         item.Lid.localRotation=item.Kind==DroneKind.Scout?Quaternion.Euler(0,0,angle):Quaternion.Euler(0,-angle,0);
         for(int i=0;i<item.Links.Length;i++)
         {
@@ -138,12 +177,10 @@ internal static class DroneParts
         if(launcher.Model==null) return false;
         if(!meshes.TryGetValue(launcher.Pointer,out var item) || item.Root==null || item.ModelId!=launcher.Model.Pointer) Loaded(launcher);
         if(!meshes.TryGetValue(launcher.Pointer,out item) || item.Root==null) return false;
-        item.Started=now; item.ReloadAt=float.PositiveInfinity;
+        item.Started=now;
         SetPose(item,0);
         return true;
     }
-    internal static void Reload(VehicleObjectModel launcher,float at)
-    { if(meshes.TryGetValue(launcher.Pointer,out var item)) item.ReloadAt=at; }
     private static void SyncMount(PartVisual item)
     {
         var source=item.Source;
@@ -172,7 +209,7 @@ internal static class DroneParts
     {
         foreach(var id in meshes.Keys.ToArray())
         {
-            var item=meshes[id];item.Started=-1;item.ReloadAt=0;
+            var item=meshes[id];item.Started=-1;
             try { if(item.Root==null) {ReleaseMesh(id);continue;} SetPose(item,-1); }
             catch(Exception ex) {ReleaseMesh(id);Plugin.Instance.Log.LogWarning("[Drones] Retired stale launcher visual: "+ex.Message);}
         }

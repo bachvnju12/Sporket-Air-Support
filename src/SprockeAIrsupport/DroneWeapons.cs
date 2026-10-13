@@ -135,7 +135,8 @@ internal static class DroneWeapons
                 foreach(var drone in DroneRuntime.Drones)
                 {
                     float hit=DroneCombatRules.HitDistance(drone.Flight.Kind,drone.Flight.Position,drone.Flight.Heading,drone.Flight.Pitch,drone.Flight.Bank,
-                        DroneRuntime.ToN(p.position),DroneRuntime.ToN(p.position+p.velocity*dt),drone.HitScale);
+                        DroneRuntime.ToN(p.position),DroneRuntime.ToN(p.position+p.velocity*dt),drone.HitScale,
+                        LauncherRules.WingDeployment(drone.Flight.Kind,drone.LaunchAge,drone.Flight.Kind==DroneKind.Scout?1:2)>=1);
                     if(hit<closest && drone.Health>0 && drone.LaunchAge>=LauncherRules.ReleaseTime) { closest=hit; victim=drone; }
                 }
                 if(victim==null) continue;

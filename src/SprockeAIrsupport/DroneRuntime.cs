@@ -20,7 +20,7 @@ internal sealed class Drone : IDisposable
     internal readonly Transform[] Wings;
     internal readonly VehicleObjectModel Launcher;
     internal readonly NVector HitScale;
-    internal bool WingsDeployed;
+    internal bool WingsDeployed,ResumeManual,ResumeArmed;
     internal float Health;
     internal float MaxHealth => DroneCombatRules.MaxHealth(Flight.Kind);
     internal Vector3? Lock;
@@ -116,7 +116,7 @@ internal static class DroneRuntime
             if(DroneBindings.Pressed("deploy-scout")) Launch(DroneKind.Scout);
             else if(DroneBindings.Pressed("deploy-kamikaze")) Launch(DroneKind.Kamikaze);
             else if(DroneBindings.Pressed("toggle-control"))
-            { if(Piloting) LeaveView(); else if(selected != null) EnterView(); }
+            { if(Piloting) LeaveView(true); else if(selected != null) EnterView(); }
         }
         var controller=player;
         var ownerObject=controller?.ControlledVehicleGameObject;
@@ -294,8 +294,8 @@ internal static class DroneRuntime
         }
         return false;
     }
-    private static Quaternion LaunchOrientation(VehicleObjectModel launcher,DroneKind kind,float age) => launcher.ModelRotation*Quaternion.Euler(kind==DroneKind.Scout?-15:-LauncherRules.Elevation(age),0,0);
-    private static Vector3 LaunchPosition(VehicleObjectModel launcher,DroneKind kind,float age) => launcher.ModelPosition+launcher.ModelRotation*Vector3.Scale(launcher.ModelScale,ToU(PartGeometry.PayloadPosition(kind,LauncherRules.Elevation(age)))+new Vector3(0,LauncherRules.LiftHeight(age,Plugin.LauncherHeight.Value),0));
+    private static Quaternion LaunchOrientation(VehicleObjectModel launcher,DroneKind kind,float age) => launcher.ModelRotation*Quaternion.Euler(-LauncherRules.Elevation(kind,age),0,0);
+    private static Vector3 LaunchPosition(VehicleObjectModel launcher,DroneKind kind,float age) => launcher.ModelPosition+launcher.ModelRotation*Vector3.Scale(launcher.ModelScale,ToU(PartGeometry.PayloadPosition(kind,LauncherRules.Elevation(kind,age)))+new Vector3(0,LauncherRules.LiftHeight(age,Plugin.LauncherHeight.Value),0));
     private static void Launch(DroneKind kind)
     {
         if (player?.ControlledVehicleGameObject == null || camera == null) return;
@@ -321,13 +321,14 @@ internal static class DroneRuntime
         if(selected==drone) { LeaveView(); selected=null; }
         drones.Remove(drone); drone.Dispose();
         float delay=destroyed?180:15;
-        DroneParts.Reload(drone.Launcher,(clock?.ScaledTime??0)+delay);
         if(drone.Flight.Kind==DroneKind.Scout) nextScout=(clock?.ScaledTime??0)+delay; else nextStrike=(clock?.ScaledTime??0)+delay;
         Notify(reason);
     }
     private static void EnterView()
     {
         if(selected==null || camera==null || Piloting) return;
+        if(selected.ResumeManual) selected.Flight.ResumeManual(selected.ResumeArmed);
+        selected.ResumeManual=selected.ResumeArmed=false;
         oldCursorVisible=Cursor.visible; oldCursorLock=Cursor.lockState;
         Cursor.visible=false; Cursor.lockState=CursorLockMode.Locked; Piloting=true;
         DroneInput.Update();
@@ -340,7 +341,7 @@ internal static class DroneRuntime
             if(scope!=null) { scope.SetScopeRequested(false); scope.SetScoped(false); }
         }
     }
-    private static void LeaveView()
+    private static void LeaveView(bool resume=false)
     {
         RestorePose();
         if(Piloting) { Cursor.visible=oldCursorVisible; Cursor.lockState=oldCursorLock; }
@@ -348,6 +349,8 @@ internal static class DroneRuntime
         DroneInput.Release();
         if(selected!=null)
         {
+            selected.ResumeManual=resume && selected.Flight.Mode==FlightMode.Manual;
+            selected.ResumeArmed=selected.ResumeManual && selected.Flight.Armed;
             selected.Flight.Disarm();
             if(selected.Flight.Mode==FlightMode.Manual) { if(selected.Launching) selected.Flight.Mode=FlightMode.Orbit; else selected.Flight.BeginOrbit(); }
         }

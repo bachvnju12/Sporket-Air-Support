@@ -13,7 +13,7 @@ using Il2CppInterop.Runtime;
 
 namespace SprocketDrones;
 
-[BepInPlugin("sprocket.drones", "Sprocket Drones", "0.11.1")]
+[BepInPlugin("sprocket.drones", "Sprocket Drones", "0.12.0")]
 [BepInDependency(Keybinds.PluginGuid, ">=0.1.6 <0.2.0")]
 public sealed class Plugin : BasePlugin
 {
@@ -31,7 +31,7 @@ public sealed class Plugin : BasePlugin
         Enabled = Config.Bind("General", "Enabled", true, "Enable scout and kamikaze drones during combat.");
         MouseSensitivity=Config.Bind("Flight","MouseSensitivity",.12f,new ConfigDescription("Mouse aim degrees per pixel; move mouse to steer, wheel for speed.",new AcceptableValueRange<float>(.01f,1)));
         HeatPenetration=Config.Bind("Warhead","HeatPenetrationMm",DroneCombatRules.DefaultPenetration,new ConfigDescription("Single forward HEAT jet penetration budget in mm RHA (gameplay tuning).",new AcceptableValueRange<float>(50,1000)));
-        LauncherHeight=Config.Bind("Launcher","RaisedHeight",LauncherRules.RaisedHeight,new ConfigDescription("Launcher floor height above the compartment mounting plane in metres.",new AcceptableValueRange<float>(.25f,.30f)));
+        LauncherHeight=Config.Bind("Launcher","RaisedHeight",LauncherRules.RaisedHeight,new ConfigDescription("Launcher floor height above the compartment mounting plane in metres (10-25 cm).",new AcceptableValueRange<float>(.10f,.25f)));
         try
         {
             DroneBindings.Initialize();
@@ -44,7 +44,7 @@ public sealed class Plugin : BasePlugin
             loadedScene=DelegateSupport.ConvertDelegate<UnityAction<Scene,LoadSceneMode>>(new Action<Scene,LoadSceneMode>((scene,_)=>DroneRuntime.SceneChanged(scene.name)));
             unloadedScene=DelegateSupport.ConvertDelegate<UnityAction<Scene>>(new Action<Scene>(scene=>DroneRuntime.SceneChanged(scene.name)));
             SceneManager.sceneLoaded+=loadedScene;SceneManager.sceneUnloaded+=unloadedScene;
-            Log.LogInfo("[Drones] Loaded 0.11.1: native vehicle-geometry contact, one 80 mm HEAT-equivalent round calibrated at armour entry, 28 cm lift and hatch phase retention; bachvnju > drone (8 actions).");
+            Log.LogInfo("[Drones] Loaded 0.12.0: native paint, articulated scout catapult, 150 degree hatches, 10-25 cm lift, camera-return arming and 480 mm HEAT; bachvnju > drone (8 actions).");
         }
         catch (Exception ex) { DroneRuntime.Clear(); harmony?.UnpatchSelf(); DroneBindings.Release(); Log.LogError(ex); }
     }
