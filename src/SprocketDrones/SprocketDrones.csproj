@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework><AssemblyName>SprocketDrones</AssemblyName>
+    <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><PlatformTarget>x64</PlatformTarget><Version>0.11.1</Version>
+    <SprocketGameRoot Condition="'$(SprocketGameRoot)' == ''">D:\SteamLibrary\steamapps\common\Sprocket</SprocketGameRoot>
+    <KeybindsAssembly Condition="'$(KeybindsAssembly)' == ''">$(SprocketGameRoot)\BepInEx\plugins\SprocketKeybinds\SprocketKeybinds.dll</KeybindsAssembly>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="$(SprocketGameRoot)\BepInEx\core\*.dll" Exclude="$(SprocketGameRoot)\BepInEx\core\TerraFX*.dll;$(SprocketGameRoot)\BepInEx\core\dobby.dll"><Private>false</Private></Reference>
+    <Reference Include="$(SprocketGameRoot)\BepInEx\interop\*.dll"><Private>false</Private></Reference>
+    <Reference Include="SprocketKeybinds"><HintPath>$(KeybindsAssembly)</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+</Project>
