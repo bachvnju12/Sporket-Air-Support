@@ -13,7 +13,7 @@ using Il2CppInterop.Runtime;
 
 namespace SprocketDrones;
 
-[BepInPlugin("sprocket.drones", "Sprocket Drones", "0.12.0")]
+[BepInPlugin("sprocket.drones", "Sprocket Drones", "1.0.0")]
 [BepInDependency(Keybinds.PluginGuid, ">=0.1.6 <0.2.0")]
 public sealed class Plugin : BasePlugin
 {
@@ -44,7 +44,7 @@ public sealed class Plugin : BasePlugin
             loadedScene=DelegateSupport.ConvertDelegate<UnityAction<Scene,LoadSceneMode>>(new Action<Scene,LoadSceneMode>((scene,_)=>DroneRuntime.SceneChanged(scene.name)));
             unloadedScene=DelegateSupport.ConvertDelegate<UnityAction<Scene>>(new Action<Scene>(scene=>DroneRuntime.SceneChanged(scene.name)));
             SceneManager.sceneLoaded+=loadedScene;SceneManager.sceneUnloaded+=unloadedScene;
-            Log.LogInfo("[Drones] Loaded 0.12.0: native paint, articulated scout catapult, 150 degree hatches, 10-25 cm lift, camera-return arming and 480 mm HEAT; bachvnju > drone (8 actions).");
+            Log.LogInfo("[Drones] Loaded 1.0.0: native paint, articulated scout catapult, 150 degree hatches, 10-25 cm lift, camera-return arming and 480 mm HEAT; bachvnju > drone (8 actions).");
         }
         catch (Exception ex) { DroneRuntime.Clear(); harmony?.UnpatchSelf(); DroneBindings.Release(); Log.LogError(ex); }
     }
